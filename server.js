@@ -20,7 +20,8 @@ app.use(express.json())
 // ======================
 // PostgreSQL Connection
 // ======================
-const dns = require('dns').promises
+const dns = require('dns')
+const { Resolver } = dns.promises
 
 console.log('🔌 Connecting to database...')
 console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL)
@@ -48,15 +49,21 @@ const dbConfig = parseDatabaseUrl(process.env.DATABASE_URL)
 
 console.log('📝 Connecting to:', dbConfig?.host || 'connection string')
 
-// Resolve hostname ke IPv4 address
+// Resolve hostname ke IPv4 address menggunakan Google DNS
 const resolveToIPv4 = async (hostname) => {
   try {
     console.log('🔍 Resolving DNS for:', hostname)
-    const addresses = await dns.resolve4(hostname)
+
+    // Gunakan Google DNS (8.8.8.8) untuk bypass Railway DNS
+    const resolver = new Resolver()
+    resolver.setServers(['8.8.8.8', '8.8.4.4'])
+
+    const addresses = await resolver.resolve4(hostname)
     console.log('✅ IPv4 addresses found:', addresses)
     return addresses[0] // Gunakan IP pertama
   } catch (err) {
     console.error('❌ DNS resolution failed:', err.message)
+    console.log('⚠️ Falling back to hostname')
     return hostname // Fallback ke hostname
   }
 }
@@ -73,6 +80,8 @@ const initializePool = async () => {
 
   // Resolve hostname ke IPv4
   const ipv4Address = await resolveToIPv4(dbConfig.host)
+
+  console.log('🔗 Connecting to IP:', ipv4Address)
 
   const pool = new Pool({
     host: ipv4Address, // Gunakan IPv4 address langsung
