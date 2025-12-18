@@ -5,110 +5,38 @@ const { Pool } = require('pg')
 
 const app = express()
 
+// app.use(cors())
 const corsOptions = {
   origin: [
     'http://localhost:3000',
-    'https://kambers-backend-production.up.railway.app'
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://kamberss-kamera.vercel.app' // Fallback for specific vercel app
   ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  credentials: true
 }
-
 app.use(cors(corsOptions))
 app.use(express.json())
 
 // ======================
 // PostgreSQL Connection
 // ======================
-const dns = require('dns')
-const { Resolver } = dns.promises
+// const pool = new Pool({
+//   host: 'localhost',
+//   user: 'postgres',
+//   password: 'postgres',
+//   database: 'kamberss_kamera',
+//   port: 5432
+// })
 
-console.log('🔌 Connecting to database...')
-console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+})
 
-// Parse DATABASE_URL untuk force IPv4
-const parseDatabaseUrl = (url) => {
-  if (!url) return null
-
-  try {
-    const urlObj = new URL(url)
-    return {
-      host: urlObj.hostname,
-      port: urlObj.port || 5432,
-      database: urlObj.pathname.slice(1),
-      user: urlObj.username,
-      password: urlObj.password
-    }
-  } catch (err) {
-    console.error('❌ Failed to parse DATABASE_URL:', err.message)
-    return null
-  }
-}
-
-const dbConfig = parseDatabaseUrl(process.env.DATABASE_URL)
-
-console.log('📝 Connecting to:', dbConfig?.host || 'connection string')
-
-// Resolve hostname ke IPv4 address menggunakan Google DNS
-const resolveToIPv4 = async (hostname) => {
-  try {
-    console.log('🔍 Resolving DNS for:', hostname)
-
-    // Gunakan Google DNS (8.8.8.8) untuk bypass Railway DNS
-    const resolver = new Resolver()
-    resolver.setServers(['8.8.8.8', '8.8.4.4'])
-
-    const addresses = await resolver.resolve4(hostname)
-    console.log('✅ IPv4 addresses found:', addresses)
-    return addresses[0] // Gunakan IP pertama
-  } catch (err) {
-    console.error('❌ DNS resolution failed:', err.message)
-    console.log('⚠️ Falling back to hostname')
-    return hostname // Fallback ke hostname
-  }
-}
-
-// Initialize pool setelah resolve DNS
-const initializePool = async () => {
-  if (!dbConfig) {
-    console.error('❌ No database config available')
-    return new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
-    })
-  }
-
-  // Resolve hostname ke IPv4
-  const ipv4Address = await resolveToIPv4(dbConfig.host)
-
-  console.log('🔗 Connecting to IP:', ipv4Address)
-
-  const pool = new Pool({
-    host: ipv4Address, // Gunakan IPv4 address langsung
-    port: dbConfig.port,
-    database: dbConfig.database,
-    user: dbConfig.user,
-    password: dbConfig.password,
-    ssl: {
-      rejectUnauthorized: false
-    }
-  })
-
-  // Test koneksi
-  try {
-    const client = await pool.connect()
-    console.log('✅ PostgreSQL connected to', ipv4Address)
-    client.release()
-  } catch (err) {
-    console.error('❌ PostgreSQL connection error:', err.message)
-    console.error('Stack:', err.stack)
-  }
-
-  return pool
-}
-
-// Create pool variable - will be initialized before server starts
-let pool
+// Test koneksi
+pool.connect()
+  .then(() => console.log('✅ PostgreSQL connected'))
+  .catch(err => console.error('❌ PostgreSQL error:', err))
 
 // ======================
 // DEBUG LOG (sementara)
@@ -181,7 +109,12 @@ app.get('/api/products', async (req, res) => {
     }
 
     result.rows.forEach(p => {
-      const category = p.category?.toLowerCase()
+      let category = p.category?.toLowerCase()
+
+      // Normalize category names (database uses singular, frontend expects plural)
+      if (category === 'camera') category = 'cameras'
+      if (category === 'gimbal') category = 'gimbals'
+
       if (products[category]) {
         products[category].push(p)
       } else {
@@ -303,6 +236,7 @@ app.put('/api/rentals/:id/return', async (req, res) => {
 // ======================
 // SERVER
 // ======================
+// const PORT = 5000
 const PORT = process.env.PORT || 5000
 
 app.get('/', (req, res) => {
@@ -312,28 +246,7 @@ app.get('/', (req, res) => {
   })
 })
 
-// Start server setelah pool ready
-const startServer = async () => {
-  try {
-    // Initialize pool dulu
-    pool = await initializePool()
-    console.log('✅ Database pool initialized')
 
-    // Baru start server
-    app.listen(PORT, () => {
-      console.log(`🚀 Backend running on port ${PORT}`)
-    })
-  } catch (err) {
-    console.error('❌ Failed to start server:', err)
-    // Fallback: start server tanpa pool
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
-    })
-    app.listen(PORT, () => {
-      console.log(`⚠️ Backend running on port ${PORT} (without DB connection)`)
-    })
-  }
-}
-
-startServer()
+app.listen(PORT, () => {
+  console.log(`🚀 Backend running on http://localhost:${PORT}`)
+})
