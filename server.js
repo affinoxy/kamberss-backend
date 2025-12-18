@@ -5,17 +5,13 @@ const { Pool } = require('pg')
 
 const app = express()
 
-// app.use(cors())
-const corsOptions = {
-  origin: [
-    'http://localhost:3000',
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'https://kamberss-kamera.vercel.app' // Fallback for specific vercel app
-  ],
-  credentials: true
-}
-app.use(cors(corsOptions))
+app.use(cors()) // Simplified CORS for debugging
 app.use(express.json())
+
+console.log('--- Server Initializing ---')
+console.log('NODE_ENV:', process.env.NODE_ENV)
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL)
+console.log('PORT:', process.env.PORT)
 
 // ======================
 // PostgreSQL Connection
