@@ -1,0 +1,31 @@
+
+Categories: [{"category":"lenses"},{"category":"gimbals"},{"category":"camera"},{"category":"lighting"},{"category":"packages"},{"category":"cameras"}]
+Total Count: 37
+Sample Items: [
+  {
+    "id": 1,
+    "name": "Sony A7 III",
+    "category": "cameras"
+  },
+  {
+    "id": 2,
+    "name": "Canon EOS R6",
+    "category": "cameras"
+  },
+  {
+    "id": 3,
+    "name": "Sony 24-70mm f/2.8",
+    "category": "lenses"
+  },
+  {
+    "id": 4,
+    "name": "Sony A7 III",
+    "category": "cameras"
+  },
+  {
+    "id": 5,
+    "name": "Canon EOS R6",
+    "category": "cameras"
+  }
+]
+    
