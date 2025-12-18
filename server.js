@@ -5,11 +5,20 @@ const { Pool } = require('pg')
 
 const app = express()
 
-app.use(cors())
+// ======================
+// CORS FIX (WAJIB UNTUK RAILWAY)
+// ======================
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
+app.options('*', cors())
+
 app.use(express.json())
 
 // ======================
-// PostgreSQL Connection (Railway / Supabase)
+// PostgreSQL Connection
 // ======================
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -24,6 +33,14 @@ const pool = new Pool({
 pool.connect()
   .then(() => console.log('✅ PostgreSQL connected'))
   .catch(err => console.error('❌ PostgreSQL error:', err))
+
+// ======================
+// DEBUG LOG (sementara)
+// ======================
+app.use((req, res, next) => {
+  console.log('➡️', req.method, req.url)
+  next()
+})
 
 // ======================
 // AUTH - LOGIN
@@ -160,6 +177,7 @@ app.put('/api/rentals/:id/status', async (req, res) => {
 // SERVER
 // ======================
 const PORT = process.env.PORT || 5000
+
 app.get('/', (req, res) => {
   res.json({
     status: 'OK',
