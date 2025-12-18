@@ -107,20 +107,8 @@ const initializePool = async () => {
   return pool
 }
 
-// Create pool variable
+// Create pool variable - will be initialized before server starts
 let pool
-
-// Initialize pool asynchronously
-initializePool().then(p => {
-  pool = p
-}).catch(err => {
-  console.error('❌ Failed to initialize pool:', err)
-  // Fallback pool
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-  })
-})
 
 // ======================
 // DEBUG LOG (sementara)
@@ -324,6 +312,28 @@ app.get('/', (req, res) => {
   })
 })
 
-app.listen(PORT, () => {
-  console.log(`🚀 Backend running on port ${PORT}`)
-})
+// Start server setelah pool ready
+const startServer = async () => {
+  try {
+    // Initialize pool dulu
+    pool = await initializePool()
+    console.log('✅ Database pool initialized')
+
+    // Baru start server
+    app.listen(PORT, () => {
+      console.log(`🚀 Backend running on port ${PORT}`)
+    })
+  } catch (err) {
+    console.error('❌ Failed to start server:', err)
+    // Fallback: start server tanpa pool
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    })
+    app.listen(PORT, () => {
+      console.log(`⚠️ Backend running on port ${PORT} (without DB connection)`)
+    })
+  }
+}
+
+startServer()
