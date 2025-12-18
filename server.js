@@ -5,17 +5,16 @@ const { Pool } = require('pg')
 
 const app = express()
 
-// ======================
-// CORS FIX (WAJIB UNTUK RAILWAY)
-// ======================
+// ✅ FIX CORS (WAJIB)
 app.use(cors({
-  origin: '*',
+  origin: ['http://localhost:3000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
-app.options('*', cors())
 
 app.use(express.json())
+
+
 
 // ======================
 // PostgreSQL Connection
