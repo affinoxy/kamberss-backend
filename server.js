@@ -160,6 +160,13 @@ app.put('/api/rentals/:id/status', async (req, res) => {
 // SERVER
 // ======================
 const PORT = process.env.PORT || 5000
+app.get('/', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Backend Kambers Kamera running 🚀'
+  })
+})
+
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on port ${PORT}`)
 })
