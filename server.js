@@ -20,6 +20,8 @@ app.use(express.json())
 // ======================
 // PostgreSQL Connection
 // ======================
+const dns = require('dns').promises
+
 console.log('🔌 Connecting to database...')
 console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL)
 
@@ -44,33 +46,72 @@ const parseDatabaseUrl = (url) => {
 
 const dbConfig = parseDatabaseUrl(process.env.DATABASE_URL)
 
-const pool = new Pool(dbConfig ? {
-  host: dbConfig.host,
-  port: dbConfig.port,
-  database: dbConfig.database,
-  user: dbConfig.user,
-  password: dbConfig.password,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  // Force IPv4
-  family: 4
-} : {
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
-})
-
 console.log('📝 Connecting to:', dbConfig?.host || 'connection string')
 
-// Test koneksi DB
-pool.connect()
-  .then(() => console.log('✅ PostgreSQL connected'))
-  .catch(err => {
+// Resolve hostname ke IPv4 address
+const resolveToIPv4 = async (hostname) => {
+  try {
+    console.log('🔍 Resolving DNS for:', hostname)
+    const addresses = await dns.resolve4(hostname)
+    console.log('✅ IPv4 addresses found:', addresses)
+    return addresses[0] // Gunakan IP pertama
+  } catch (err) {
+    console.error('❌ DNS resolution failed:', err.message)
+    return hostname // Fallback ke hostname
+  }
+}
+
+// Initialize pool setelah resolve DNS
+const initializePool = async () => {
+  if (!dbConfig) {
+    console.error('❌ No database config available')
+    return new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    })
+  }
+
+  // Resolve hostname ke IPv4
+  const ipv4Address = await resolveToIPv4(dbConfig.host)
+
+  const pool = new Pool({
+    host: ipv4Address, // Gunakan IPv4 address langsung
+    port: dbConfig.port,
+    database: dbConfig.database,
+    user: dbConfig.user,
+    password: dbConfig.password,
+    ssl: {
+      rejectUnauthorized: false
+    }
+  })
+
+  // Test koneksi
+  try {
+    const client = await pool.connect()
+    console.log('✅ PostgreSQL connected to', ipv4Address)
+    client.release()
+  } catch (err) {
     console.error('❌ PostgreSQL connection error:', err.message)
     console.error('Stack:', err.stack)
+  }
+
+  return pool
+}
+
+// Create pool variable
+let pool
+
+// Initialize pool asynchronously
+initializePool().then(p => {
+  pool = p
+}).catch(err => {
+  console.error('❌ Failed to initialize pool:', err)
+  // Fallback pool
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
   })
+})
 
 // ======================
 // DEBUG LOG (sementara)
