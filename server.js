@@ -23,12 +23,46 @@ app.use(express.json())
 console.log('🔌 Connecting to database...')
 console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL)
 
-const pool = new Pool({
+// Parse DATABASE_URL untuk force IPv4
+const parseDatabaseUrl = (url) => {
+  if (!url) return null
+
+  try {
+    const urlObj = new URL(url)
+    return {
+      host: urlObj.hostname,
+      port: urlObj.port || 5432,
+      database: urlObj.pathname.slice(1),
+      user: urlObj.username,
+      password: urlObj.password
+    }
+  } catch (err) {
+    console.error('❌ Failed to parse DATABASE_URL:', err.message)
+    return null
+  }
+}
+
+const dbConfig = parseDatabaseUrl(process.env.DATABASE_URL)
+
+const pool = new Pool(dbConfig ? {
+  host: dbConfig.host,
+  port: dbConfig.port,
+  database: dbConfig.database,
+  user: dbConfig.user,
+  password: dbConfig.password,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  // Force IPv4
+  family: 4
+} : {
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : {
+  ssl: {
     rejectUnauthorized: false
   }
 })
+
+console.log('📝 Connecting to:', dbConfig?.host || 'connection string')
 
 // Test koneksi DB
 pool.connect()
