@@ -1,111 +1,218 @@
-// const fetch = require('node-fetch'); // Fallback if global fetch missing, but usually standard in v18+
-// // If node-fetch isn't installed, we might need to rely on native fetch or install it.
-// // Let's try native fetch first by suppressing this line if needed or just using keys.
+require('dotenv').config();
+const { Pool } = require('pg');
 
-// const API_URL = 'http://localhost:5000/api';
+const connectionString = process.env.DATABASE_URL;
 
-// const products = [
-//     {
-//         name: 'Sony A7 III',
-//         category: 'cameras',
-//         price: 150000,
-//         image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=500',
-//         specs: '24MP Full Frame',
-//         description: 'Professional mirrorless camera perfect for low light.'
-//     },
-//     {
-//         name: 'Canon EOS R5',
-//         category: 'cameras',
-//         price: 250000,
-//         image: 'https://images.unsplash.com/photo-1519183071295-37f20c4d8c42?auto=format&fit=crop&w=500',
-//         specs: '45MP Full Frame',
-//         description: 'High-resolution professional camera.'
-//     },
-//     {
-//         name: 'Sony 24-70mm f/2.8 GM',
-//         category: 'lenses',
-//         price: 100000,
-//         image: 'https://images.unsplash.com/photo-1617005082133-548c4dd27f35?auto=format&fit=crop&w=500',
-//         specs: 'Zoom Lens',
-//         description: 'Versatile zoom lens for all situations.'
-//     }
-// ];
+if (!connectionString) {
+    console.error('❌ Error: DATABASE_URL is not defined in .env file');
+    console.error('👉 Tip: Pastikan Anda sudah membuat file .env dan mengisi DATABASE_URL');
+    process.exit(1);
+}
 
-// const rentals = [
-//     {
-//         name: 'Budi Santoso',
-//         email: 'budi@example.com',
-//         phone: '08123456789',
-//         startDate: '2023-12-20',
-//         endDate: '2023-12-23',
-//         items: [] // Will be filled with product IDs
-//     },
-//     {
-//         name: 'Siti Aminah',
-//         email: 'siti@test.com',
-//         phone: '08987654321',
-//         startDate: '2023-12-25',
-//         endDate: '2023-12-26',
-//         items: []
-//     }
-// ];
+const pool = new Pool({
+    connectionString: connectionString,
+    ssl: process.env.NODE_ENV === 'production' || connectionString.includes('railway')
+        ? { rejectUnauthorized: false }
+        : false
+});
 
-// async function seed() {
-//     console.log('🌱 Starting seed...');
+const products = [
+    {
+        name: 'Sony A7 III',
+        category: 'cameras',
+        price: 150000,
+        image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=500',
+        specs: '24MP Full Frame',
+        description: 'Professional mirrorless camera perfect for low light.'
+    },
+    {
+        name: 'Canon EOS R5',
+        category: 'cameras',
+        price: 250000,
+        image: 'https://images.unsplash.com/photo-1519183071295-37f20c4d8c42?auto=format&fit=crop&w=500',
+        specs: '45MP Full Frame',
+        description: 'High-resolution professional camera.'
+    },
+    {
+        name: 'Fujifilm X-T4',
+        category: 'cameras',
+        price: 180000,
+        image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=500',
+        specs: '26MP APS-C',
+        description: 'Great for video and stills with IBS.'
+    },
+    {
+        name: 'Sony 24-70mm f/2.8 GM',
+        category: 'lenses',
+        price: 100000,
+        image: 'https://images.unsplash.com/photo-1617005082133-548c4dd27f35?auto=format&fit=crop&w=500',
+        specs: 'Zoom Lens',
+        description: 'Versatile zoom lens for all situations.'
+    },
+    {
+        name: 'Sigma 16mm f/1.4',
+        category: 'lenses',
+        price: 50000,
+        image: 'https://images.unsplash.com/photo-1617005082133-548c4dd27f35?auto=format&fit=crop&w=500',
+        specs: 'Prime Lens',
+        description: 'Wide angle lens perfect for landscape.'
+    },
+    {
+        name: 'GoPro Hero 11',
+        category: 'actioncam',
+        price: 75000,
+        image: 'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?auto=format&fit=crop&w=500',
+        specs: '5.3K Video',
+        description: 'Ultimate action camera for adventure.'
+    },
+    {
+        name: 'DJI RS 3',
+        category: 'gimbals',
+        price: 120000,
+        image: 'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?auto=format&fit=crop&w=500',
+        specs: '3-Axis Stabilizer',
+        description: 'Professional stabilizer for smooth footage.'
+    },
+    {
+        name: 'Godox SL60W',
+        category: 'lighting',
+        price: 60000,
+        image: 'https://images.unsplash.com/photo-1524397057410-1e775ed476f3?auto=format&fit=crop&w=500',
+        specs: '60W LED',
+        description: 'Continuous lighting for video shoots.'
+    },
+    {
+        name: 'Paket Vlogging',
+        category: 'packages',
+        price: 200000,
+        image: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=500',
+        specs: 'Camera + Mic + Tripod',
+        description: 'Complete starter kit for vloggers.'
+    }
+];
 
-//     try {
-//         // 1. Create Products
-//         const createdProducts = [];
-//         for (const p of products) {
-//             console.log(`Adding product: ${p.name}...`);
-//             const res = await fetch(`${API_URL}/products`, {
-//                 method: 'POST',
-//                 headers: { 'Content-Type': 'application/json' },
-//                 body: JSON.stringify(p)
-//             });
+const users = [
+    {
+        name: 'Admin Kamberss',
+        email: 'admin@kamberss.com',
+        password: 'admin123', // In real app, hash this!
+        role: 'admin'
+    },
+    {
+        name: 'Customer Demo',
+        email: 'user@gmail.com',
+        password: 'user123',
+        role: 'customer'
+    }
+];
 
-//             if (!res.ok) {
-//                 console.error(`Failed to add product ${p.name}`);
-//                 continue;
-//             }
+async function seed() {
+    console.log('🌱 Starting database seed...');
+    const client = await pool.connect();
 
-//             const newProduct = await res.json();
-//             createdProducts.push(newProduct);
-//             console.log(`✅ Added ${newProduct.name} (ID: ${newProduct.id})`);
-//         }
+    try {
+        await client.query('BEGIN');
 
-//         if (createdProducts.length === 0) {
-//             console.error('❌ No products created, skipping rentals.');
-//             return;
-//         }
+        // ============================================
+        // 1. Drop existing tables (clean slate)
+        // ============================================
+        console.log('🗑️  Dropping old tables...');
+        await client.query(`DROP TABLE IF EXISTS rental_items CASCADE`);
+        await client.query(`DROP TABLE IF EXISTS rentals CASCADE`);
+        await client.query(`DROP TABLE IF EXISTS products CASCADE`);
+        await client.query(`DROP TABLE IF EXISTS users CASCADE`);
 
-//         // 2. Create Rentals
-//         rentals[0].items = [createdProducts[0], createdProducts[2]]; // Budi rents Camera 1 + Lens
-//         rentals[1].items = [createdProducts[1]]; // Siti rents Camera 2
+        // ============================================
+        // 2. Create Tables
+        // ============================================
+        console.log('🏗️  Creating tables...');
 
-//         for (const r of rentals) {
-//             console.log(`Adding rental for: ${r.name}...`);
-//             const res = await fetch(`${API_URL}/rental`, {
-//                 method: 'POST',
-//                 headers: { 'Content-Type': 'application/json' },
-//                 body: JSON.stringify(r)
-//             });
+        // Users Table
+        await client.query(`
+      CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(100) NOT NULL,
+        role VARCHAR(20) DEFAULT 'customer',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-//             if (!res.ok) {
-//                 console.error(`Failed to add rental for ${r.name}`);
-//                 const txt = await res.text();
-//                 console.error(txt);
-//                 continue;
-//             }
+        // Products Table
+        await client.query(`
+      CREATE TABLE products (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        price INTEGER NOT NULL,
+        image TEXT,
+        specs TEXT,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-//             console.log(`✅ Added rental for ${r.name}`);
-//         }
+        // Rentals Table
+        await client.query(`
+      CREATE TABLE rentals (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        phone VARCHAR(20) NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        return_date TIMESTAMP,
+        return_notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-//         console.log('🎉 Seeding completed!');
+        // Rental Items Table (Many-to-Many relationship)
+        await client.query(`
+      CREATE TABLE rental_items (
+        id SERIAL PRIMARY KEY,
+        rental_id INTEGER REFERENCES rentals(id) ON DELETE CASCADE,
+        product_id INTEGER REFERENCES products(id),
+        price INTEGER NOT NULL
+      );
+    `);
 
-//     } catch (err) {
-//         console.error('❌ Error during seeding:', err);
-//     }
-// }
+        // ============================================
+        // 3. Insert Data
+        // ============================================
+        console.log('📝 Inserting data...');
 
-// seed();
+        // Insert Users
+        for (const u of users) {
+            await client.query(
+                `INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4)`,
+                [u.name, u.email, u.password, u.role]
+            );
+        }
+        console.log(`✅ Inserted ${users.length} users`);
+
+        // Insert Products
+        for (const p of products) {
+            await client.query(
+                `INSERT INTO products (name, category, price, image, specs, description) 
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+                [p.name, p.category, p.price, p.image, p.specs, p.description]
+            );
+        }
+        console.log(`✅ Inserted ${products.length} products`);
+
+        await client.query('COMMIT');
+        console.log('🎉 Database seeded successfully!');
+
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('❌ Error seeding database:', err);
+    } finally {
+        client.release();
+        pool.end();
+    }
+}
+
+seed();
