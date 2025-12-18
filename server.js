@@ -14,27 +14,29 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization']
 }
 
-app.use(cors())
+app.use(cors(corsOptions))
 app.use(express.json())
 
 // ======================
 // PostgreSQL Connection
 // ======================
+console.log('🔌 Connecting to database...')
+console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL)
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    require: true,
+  ssl: process.env.DATABASE_URL?.includes('localhost') ? false : {
     rejectUnauthorized: false
   }
 })
 
-
-
-
 // Test koneksi DB
 pool.connect()
   .then(() => console.log('✅ PostgreSQL connected'))
-  .catch(err => console.error('❌ PostgreSQL error:', err))
+  .catch(err => {
+    console.error('❌ PostgreSQL connection error:', err.message)
+    console.error('Stack:', err.stack)
+  })
 
 // ======================
 // DEBUG LOG (sementara)
@@ -87,12 +89,15 @@ app.post('/api/login', async (req, res) => {
 // ======================
 app.get('/api/products', async (req, res) => {
   try {
-    const result = await pool.query(`
-    SELECT id, name, price, image, specs, description, category
-    FROM public.products
-    ORDER BY id
-`)
+    console.log('📦 Fetching products...')
 
+    const result = await pool.query(`
+      SELECT id, name, price, image, specs, description, category
+      FROM products
+      ORDER BY id
+    `)
+
+    console.log(`✅ Found ${result.rows.length} products`)
 
     const products = {
       cameras: [],
@@ -107,13 +112,29 @@ app.get('/api/products', async (req, res) => {
       const category = p.category?.toLowerCase()
       if (products[category]) {
         products[category].push(p)
+      } else {
+        console.warn(`⚠️ Unknown category: ${category} for product: ${p.name}`)
       }
+    })
+
+    console.log('📊 Products by category:', {
+      cameras: products.cameras.length,
+      lenses: products.lenses.length,
+      actioncam: products.actioncam.length,
+      lighting: products.lighting.length,
+      gimbals: products.gimbals.length,
+      packages: products.packages.length
     })
 
     res.json(products)
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to fetch products' })
+    console.error('❌ Error fetching products:', err.message)
+    console.error('Stack:', err.stack)
+    res.status(500).json({
+      error: 'Failed to fetch products',
+      message: err.message,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    })
   }
 })
 
@@ -159,7 +180,8 @@ app.get('/api/rentals', async (req, res) => {
     )
     res.json(result.rows)
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch rentals' })
+    console.error('❌ Error fetching rentals:', err.message)
+    res.status(500).json({ error: 'Failed to fetch rentals', message: err.message })
   }
 })
 
@@ -174,7 +196,35 @@ app.put('/api/rentals/:id/status', async (req, res) => {
     )
     res.json({ success: true })
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update status' })
+    console.error('❌ Error updating status:', err.message)
+    res.status(500).json({ error: 'Failed to update status', message: err.message })
+  }
+})
+
+// PROCESS RETURN
+app.put('/api/rentals/:id/return', async (req, res) => {
+  const { id } = req.params
+  const { notes } = req.body
+
+  try {
+    const result = await pool.query(
+      `UPDATE rentals 
+       SET status = 'dikembalikan', 
+           return_date = CURRENT_TIMESTAMP,
+           return_notes = $1
+       WHERE id = $2
+       RETURNING *`,
+      [notes || '', id]
+    )
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Rental not found' })
+    }
+
+    res.json({ success: true, rental: result.rows[0] })
+  } catch (err) {
+    console.error('❌ Error processing return:', err.message)
+    res.status(500).json({ error: 'Failed to process return', message: err.message })
   }
 })
 
