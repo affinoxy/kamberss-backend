@@ -5,14 +5,19 @@ const { Pool } = require('pg')
 
 const app = express()
 
-// ✅ FIX CORS (WAJIB)
-app.use(cors({
-  origin: ['http://localhost:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'https://kambers-backend-production.up.railway.app'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}))
+}
 
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 app.use(express.json())
+
 
 
 
