@@ -52,9 +52,10 @@ app.post('/api/login', async (req, res) => {
 
   try {
     const result = await pool.query(
-      'SELECT * FROM users WHERE email = $1',
+      'SELECT * FROM public.users WHERE email = $1',
       [email]
     )
+
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Email tidak ditemukan' })
@@ -87,10 +88,11 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/products', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, name, price, image, specs, description, category
-      FROM products
-      ORDER BY id
-    `)
+    SELECT id, name, price, image, specs, description, category
+    FROM public.products
+    ORDER BY id
+`)
+
 
     const products = {
       cameras: [],
@@ -123,9 +125,9 @@ app.post('/api/rental', async (req, res) => {
 
   try {
     const rental = await pool.query(
-      `INSERT INTO rentals (name, email, phone, start_date, end_date, status)
-       VALUES ($1,$2,$3,$4,$5,'pending')
-       RETURNING id`,
+      `INSERT INTO public.rentals (name, email, phone, start_date, end_date, status)
+    VALUES ($1,$2,$3,$4,$5,'pending')
+    RETURNING id`,
       [name, email, phone, startDate, endDate]
     )
 
@@ -133,10 +135,11 @@ app.post('/api/rental', async (req, res) => {
 
     for (const item of items) {
       await pool.query(
-        `INSERT INTO rental_items (rental_id, product_id, price)
-         VALUES ($1,$2,$3)`,
+        `INSERT INTO public.rental_items (rental_id, product_id, price)
+   VALUES ($1,$2,$3)`,
         [rentalId, item.id, item.price]
       )
+
     }
 
     res.json({ success: true })
