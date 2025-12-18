@@ -5,12 +5,26 @@ const { Pool } = require('pg')
 
 const app = express()
 
-app.use(cors()) // Simplified CORS for debugging
+app.use(cors())
 app.use(express.json())
+
+// Health check paling atas
+app.get('/', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Backend Kambers Kamera running 🚀',
+    time: new Date().toISOString()
+  })
+})
+
+// Log setiap request dengan timestamp
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`)
+  next()
+})
 
 console.log('--- Server Initializing ---')
 console.log('NODE_ENV:', process.env.NODE_ENV)
-console.log('FRONTEND_URL:', process.env.FRONTEND_URL)
 console.log('PORT:', process.env.PORT)
 
 // ======================
@@ -235,12 +249,7 @@ app.put('/api/rentals/:id/return', async (req, res) => {
 // const PORT = 5000
 const PORT = process.env.PORT || 5000
 
-app.get('/', (req, res) => {
-  res.json({
-    status: 'OK',
-    message: 'Backend Kambers Kamera running 🚀'
-  })
-})
+// Health check sudah dipindah ke atas
 
 
 app.listen(PORT, '0.0.0.0', () => {
