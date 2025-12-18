@@ -18,6 +18,19 @@ const pool = new Pool({
   port: 5432
 })
 
+require('dotenv').config()
+const { Pool } = require('pg')
+
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  ssl: { rejectUnauthorized: false }
+})
+
+
 // Test koneksi
 pool.connect()
   .then(() => console.log('✅ PostgreSQL connected'))
@@ -215,10 +228,10 @@ app.put('/api/rentals/:id/return', async (req, res) => {
 })
 
 // ======================
-// const PORT = 5000
-// app.listen(PORT, () => {
-//   console.log(`🚀 Backend running on http://localhost:${PORT}`)
-// })
+const PORT = 5000
+app.listen(PORT, () => {
+  console.log(`🚀 Backend running on http://localhost:${PORT}`)
+})
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on port ${PORT}`)
