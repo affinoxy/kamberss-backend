@@ -10,7 +10,7 @@ const app = express()
 app.use(cors()) // Permissive CORS for initial stabilization
 app.use(express.json())
 
-// Health check (Top priority for Railway survival)
+// Health check (Top priority for serverless survival)
 app.get('/', (req, res) => {
   res.json({
     status: 'OK',
