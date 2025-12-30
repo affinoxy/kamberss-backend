@@ -32,7 +32,9 @@ console.log('PORT:', process.env.PORT)
 // PostgreSQL Connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  // Supabase (and many cloud PGs) require SSL, but the pooler often uses self-signed certs.
+  // We force rejectUnauthorized: false to allow the connection.
+  ssl: { rejectUnauthorized: false }
 })
 
 pool.connect()
