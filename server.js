@@ -31,7 +31,8 @@ console.log('PORT:', process.env.PORT)
 
 // PostgreSQL Connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  // Clean the connection string to remove sslmode=require, which conflicts with our explicit config
+  connectionString: process.env.DATABASE_URL ? process.env.DATABASE_URL.replace('?sslmode=require', '').replace('&sslmode=require', '') : '',
   // Supabase (and many cloud PGs) require SSL, but the pooler often uses self-signed certs.
   // We force rejectUnauthorized: false to allow the connection.
   ssl: { rejectUnauthorized: false }
