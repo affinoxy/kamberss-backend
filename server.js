@@ -274,9 +274,16 @@ app.get('/api/rentals', async (req, res) => {
     const result = await pool.query(`
       SELECT 
         r.*,
-        (COALESCE(SUM(ri.price), 0) * GREATEST(1, (r.end_date::date - r.start_date::date))) as total_price
+        (COALESCE(SUM(ri.price), 0) * GREATEST(1, (r.end_date::date - r.start_date::date))) as total_price,
+        COALESCE(
+          json_agg(
+            json_build_object('name', p.name, 'price', ri.price)
+          ) FILTER (WHERE ri.id IS NOT NULL), 
+          '[]'
+        ) as items
       FROM rentals r
       LEFT JOIN rental_items ri ON r.id = ri.rental_id
+      LEFT JOIN products p ON ri.product_id = p.id
       GROUP BY r.id
       ORDER BY r.created_at DESC
     `)
