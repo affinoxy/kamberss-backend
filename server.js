@@ -426,13 +426,14 @@ app.post('/api/payment/create-transaction', async (req, res) => {
 
 // PAYMENT - NOTIFICATION WEBHOOK
 app.post('/api/payment/notification', async (req, res) => {
+  const client = await pool.connect()
   try {
     const notification = await snap.transaction.notification(req.body)
     const orderId = notification.order_id
     const transactionStatus = notification.transaction_status
     const fraudStatus = notification.fraud_status
 
-    console.log(`Payment notification: ${orderId} - ${transactionStatus}`)
+    console.log(`[PAYMENT NOTIF] ${orderId} - Status: ${transactionStatus}`)
 
     // Extract rental ID from order_id (format: RENTAL-{id}-{timestamp})
     const rentalId = orderId.split('-')[1]
@@ -451,13 +452,41 @@ app.post('/api/payment/notification', async (req, res) => {
       newStatus = 'menunggu'
     }
 
-    // Update rental status
-    await pool.query('UPDATE rentals SET status = $1 WHERE id = $2', [newStatus, rentalId])
+    await client.query('BEGIN')
 
+    // Get current status to prevent duplicate stock deduction
+    const currentRental = await client.query('SELECT status FROM rentals WHERE id = $1 FOR UPDATE', [rentalId])
+
+    if (currentRental.rows.length === 0) {
+      await client.query('ROLLBACK')
+      return res.status(404).json({ error: 'Rental not found' })
+    }
+
+    const oldStatus = currentRental.rows[0].status
+
+    // Update status
+    await client.query('UPDATE rentals SET status = $1 WHERE id = $2', [newStatus, rentalId])
+
+    // If status changes to 'disetujui' and it wasn't before, deduct stock
+    if (newStatus === 'disetujui' && oldStatus !== 'disetujui' && oldStatus !== 'selesai' && oldStatus !== 'dikembalikan') {
+      console.log(`[STOCK] Deducting stock for rental #${rentalId}`)
+      await client.query(`
+        UPDATE products p
+        SET stock = GREATEST(0, p.stock - 1)
+        FROM rental_items ri
+        WHERE p.id = ri.product_id
+        AND ri.rental_id = $1
+      `, [rentalId])
+    }
+
+    await client.query('COMMIT')
     res.json({ success: true })
   } catch (err) {
-    console.error('Error handling payment notification:', err)
-    res.status(500).json({ error: 'Failed to process notification' })
+    if (client) await client.query('ROLLBACK')
+    console.error('❌ Notification error:', err)
+    res.status(500).json({ error: 'Failed' })
+  } finally {
+    client.release()
   }
 })
 
