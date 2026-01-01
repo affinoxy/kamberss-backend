@@ -243,6 +243,12 @@ app.get('/api/products', async (req, res) => {
 app.post('/api/rental', async (req, res) => {
   const { name, email, phone, startDate, endDate, items } = req.body
   try {
+    // Validate that user exists
+    const userCheck = await pool.query('SELECT id FROM users WHERE email = $1', [email])
+    if (userCheck.rows.length === 0) {
+      return res.status(400).json({ error: 'Email tidak terdaftar. Silakan register terlebih dahulu.' })
+    }
+
     const rental = await pool.query(
       `INSERT INTO public.rentals (name, email, phone, start_date, end_date, status)
        VALUES ($1,$2,$3,$4,$5,'pending') RETURNING id`,
