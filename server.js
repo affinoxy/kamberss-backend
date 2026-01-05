@@ -74,7 +74,7 @@ app.post('/api/login', async (req, res) => {
     if (user.password !== password) return res.status(401).json({ error: 'Password salah' })
     res.json({
       success: true,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role }
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone }
     })
   } catch (err) {
     console.error(err)
@@ -100,8 +100,8 @@ app.post('/api/register', async (req, res) => {
     // Insert new user
     console.log('➕ Creating new user...')
     const result = await pool.query(
-      'INSERT INTO public.users (name, email, password, role, updated_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) RETURNING id, name, email, role',
-      [name, email, password, 'CUSTOMER']
+      'INSERT INTO public.users (name, email, password, role, phone, updated_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id, name, email, role, phone',
+      [name, email, password, 'CUSTOMER', req.body.phone || null]
     )
 
     console.log('✅ User created successfully:', result.rows[0])
@@ -122,7 +122,7 @@ app.post('/api/register', async (req, res) => {
 // USER MANAGEMENT - GET ALL USERS (Admin only)
 app.get('/api/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, name, email, role, created_at FROM public.users ORDER BY created_at DESC')
+    const result = await pool.query('SELECT id, name, email, phone, role, created_at FROM public.users ORDER BY created_at DESC')
     res.json(result.rows)
   } catch (err) {
     console.error('Error fetching users:', err)
@@ -143,8 +143,8 @@ app.post('/api/users', async (req, res) => {
     // Insert new user
     const roleUpper = role ? role.toUpperCase() : 'CUSTOMER'
     const result = await pool.query(
-      'INSERT INTO public.users (name, email, password, role, updated_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP) RETURNING id, name, email, role',
-      [name, email, password, roleUpper]
+      'INSERT INTO public.users (name, email, password, role, phone, updated_at) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id, name, email, role, phone',
+      [name, email, password, roleUpper, req.body.phone || null]
     )
 
     res.json({
@@ -169,12 +169,12 @@ app.put('/api/users/:id', async (req, res) => {
 
     if (password) {
       // Update with password
-      query = 'UPDATE public.users SET name = $1, email = $2, role = $3, password = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING id, name, email, role'
-      params = [name, email, roleUpper, password, id]
+      query = 'UPDATE public.users SET name = $1, email = $2, role = $3, password = $4, phone = $5, updated_at = CURRENT_TIMESTAMP WHERE id = $6 RETURNING id, name, email, role, phone'
+      params = [name, email, roleUpper, password, req.body.phone || null, id]
     } else {
       // Update without password
-      query = 'UPDATE public.users SET name = $1, email = $2, role = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING id, name, email, role'
-      params = [name, email, roleUpper, id]
+      query = 'UPDATE public.users SET name = $1, email = $2, role = $3, phone = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING id, name, email, role, phone'
+      params = [name, email, roleUpper, req.body.phone || null, id]
     }
 
     const result = await pool.query(query, params)
@@ -428,6 +428,7 @@ app.post('/api/payment/create-transaction', async (req, res) => {
 app.post('/api/payment/notification', async (req, res) => {
   const client = await pool.connect()
   try {
+    console.log('Received notification body:', JSON.stringify(req.body))
     const notification = await snap.transaction.notification(req.body)
     const orderId = notification.order_id
     const transactionStatus = notification.transaction_status
