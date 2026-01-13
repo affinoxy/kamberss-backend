@@ -310,8 +310,8 @@ app.put('/api/rentals/:id/status', async (req, res) => {
       [status, id]
     )
 
-    // Jika disetujui → kurangi stok
-    if (status === 'disetujui') {
+    // Jika diserahkan → kurangi stok
+    if (status === 'diserahkan') {
       await client.query(`
         UPDATE products p
         SET stock = p.stock - 1
@@ -443,10 +443,10 @@ app.post('/api/payment/notification', async (req, res) => {
 
     if (transactionStatus === 'capture') {
       if (fraudStatus === 'accept') {
-        newStatus = 'disetujui'
+        newStatus = 'diserahkan'
       }
     } else if (transactionStatus === 'settlement') {
-      newStatus = 'disetujui'
+      newStatus = 'diserahkan'
     } else if (transactionStatus === 'cancel' || transactionStatus === 'deny' || transactionStatus === 'expire') {
       newStatus = 'dibatalkan'
     } else if (transactionStatus === 'pending') {
@@ -468,8 +468,8 @@ app.post('/api/payment/notification', async (req, res) => {
     // Update status
     await client.query('UPDATE rentals SET status = $1 WHERE id = $2', [newStatus, rentalId])
 
-    // If status changes to 'disetujui' and it wasn't before, deduct stock
-    if (newStatus === 'disetujui' && oldStatus !== 'disetujui' && oldStatus !== 'selesai' && oldStatus !== 'dikembalikan') {
+    // If status changes to 'diserahkan' and it wasn't before, deduct stock
+    if (newStatus === 'diserahkan' && oldStatus !== 'diserahkan' && oldStatus !== 'selesai' && oldStatus !== 'dikembalikan') {
       console.log(`[STOCK] Deducting stock for rental #${rentalId}`)
       await client.query(`
         UPDATE products p
