@@ -443,10 +443,10 @@ app.post('/api/payment/notification', async (req, res) => {
 
     if (transactionStatus === 'capture') {
       if (fraudStatus === 'accept') {
-        newStatus = 'diserahkan'
+        newStatus = 'menunggu'
       }
     } else if (transactionStatus === 'settlement') {
-      newStatus = 'diserahkan'
+      newStatus = 'menunggu'
     } else if (transactionStatus === 'cancel' || transactionStatus === 'deny' || transactionStatus === 'expire') {
       newStatus = 'dibatalkan'
     } else if (transactionStatus === 'pending') {
